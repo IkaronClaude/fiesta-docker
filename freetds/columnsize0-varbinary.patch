@@ -1,0 +1,24 @@
+diff --git a/src/odbc/sql2tds.c b/src/odbc/sql2tds.c
+index 0b8f77c..a2f579f 100644
+--- a/src/odbc/sql2tds.c
++++ b/src/odbc/sql2tds.c
+@@ -352,6 +352,19 @@ odbc_sql2tds(TDS_STMT * stmt, const struct _drecord *drec_ixd, const struct _dre
+ 		}
+ 	}
+ 
++	/* FreeTDS fork (Ikaron 2026-07-07): a VARIABLE-length param bound with ColumnSize 0 (SQLBindParameter
++	 * arg 6 == 0) means "the length is the data length" — that's what MS ODBC Driver 17/18 do — NOT a
++	 * 0-byte value. Stock FreeTDS left column_size at 0, so the param buffer was alloc'd 0 bytes and the
++	 * binary/char value got clamped to 0 on the wire (see the SYBVARBINARY clamp below). That truncated the
++	 * Fiesta quest-progress varbinary to empty 0x (tQuest.sData), losing in-progress kill counts on relog.
++	 * Now that `len` (the real source length) is known, size the column from it before the buffer alloc so
++	 * the full value is sent. Scoped to non-null, non-fixed, variable-length (column_varint_size!=0) params. */
++	if (curcol->column_size == 0 && !need_data && curcol->column_varint_size != 0
++	    && !is_fixed_type(dest_type) && len > 0) {
++		curcol->column_size = len;
++		curcol->on_server.column_size = is_unicode_type(dest_type) ? len * 2 : len;
++	}
++
+ 	if (is_char_type(dest_type) && !need_data
+ 	    && (sql_src_type == SQL_C_CHAR || sql_src_type == SQL_C_WCHAR || sql_src_type == SQL_C_BINARY)) {
+ 		if (curcol->column_data && curcol->column_data_free)

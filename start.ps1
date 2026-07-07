@@ -41,7 +41,10 @@ $dbAutoRestartPattern = if ($env:DB_AUTORESTART_PATTERN) { $env:DB_AUTORESTART_P
     # and WorldManager "FAILED - ...Recv_NC_GUILD_DB_ALL_ACK" -- so the bridge
     # restarts with a fresh handle and WM re-runs init (anchored to ERROR/FAILED
     # so normal guild traffic never trips it).
-    'Communication link failure|Unable to connect to data source|Login timeout expired|Adaptive Server connection failed|Write to the server failed|Read from the server failed|(ERROR|FAILED).*(fc_NC_GUILD_DB_LIST_REQ|Recv_NC_GUILD_DB_ALL_ACK)'
+    # The trailing "[FreeTDS]...Unknown error" alternative catches the account.exe
+    # login desync (S1000 / native 0) from a stale TDS connection -- narrow to the
+    # "Unknown error" message so benign prefix-sharing app errors don't trip it.
+    'Communication link failure|Unable to connect to data source|Login timeout expired|Adaptive Server connection failed|Write to the server failed|Read from the server failed|(ERROR|FAILED).*(fc_NC_GUILD_DB_LIST_REQ|Recv_NC_GUILD_DB_ALL_ACK)|\[FreeTDS\].*Unknown error'
 }
 $publicIp      = $env:PUBLIC_IP
 $sqlHost       = if ($env:SQL_HOST)       { $env:SQL_HOST }       else { '127.0.0.1' }

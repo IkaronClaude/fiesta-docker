@@ -51,7 +51,14 @@ set -eo pipefail
 # anchored to ERROR/FAILED so normal guild traffic never trips them. Matching
 # them lets the Character bridge restart with a fresh handle AND lets WM
 # restart so it re-runs init once the bridge is healthy.
-: "${DB_AUTORESTART_PATTERN:=Communication link failure|Unable to connect to data source|Login timeout expired|Adaptive Server connection failed|Write to the server failed|Read from the server failed|(ERROR|FAILED).*(fc_NC_GUILD_DB_LIST_REQ|Recv_NC_GUILD_DB_ALL_ACK)}"
+# The trailing "[FreeTDS]...Unknown error" alternative catches the account.exe
+# login desync (SQLSTATE S1000 / native 0) that FreeTDS emits when its TDS
+# connection to SQL Server goes stale after hours -> logins start failing with
+# "check ID or password" until the bridge reconnects. It's narrow (only the
+# "Unknown error" message, NOT the bare "[FreeTDS][SQL Server]" prefix) so benign
+# app errors that share the prefix (missing SP 2812, constraint violations) don't
+# trip it.
+: "${DB_AUTORESTART_PATTERN:=Communication link failure|Unable to connect to data source|Login timeout expired|Adaptive Server connection failed|Write to the server failed|Read from the server failed|(ERROR|FAILED).*(fc_NC_GUILD_DB_LIST_REQ|Recv_NC_GUILD_DB_ALL_ACK)|\[FreeTDS\].*Unknown error}"
 : "${SQL_HOST:=127.0.0.1}"
 : "${SQL_PORT:=1433}"
 : "${ODBC_DRIVER:=SQL Server}"
